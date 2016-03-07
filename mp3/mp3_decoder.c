@@ -43,7 +43,7 @@ int main(int argc, char**argv) {
     typedef short PCM[2][SSLIMIT][SBLIMIT];
     PCM *pcm_sample;
     
-    pcm_sample = (PCM *) mem_alloc((long) sizeof(PCM), "PCM Samp");
+    pcm_sample = (PCM *)mem_alloc((long) sizeof(PCM), "PCM Samp");
     
     if ((musicout = fopen(pcm_filename, "w+b")) == NULL) {
         printf ("Could not create \"%s\".\n", pcm_filename);

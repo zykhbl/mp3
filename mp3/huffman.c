@@ -159,8 +159,6 @@ int huffman_decoder(struct huffcodetab *h, int *x, int *y, int *v, int *w) {
         //v, w, x and y are reversed in the bitstream
         //switch them around to make test bistream work
         
-//        {int i=*v; *v=*y; *y=i; i=*w; *w=*x; *x=i;}//MI
-        
         //在huffman码字后是每个非零残差谱线的符号位
         if (*v) {
             if (hget1bit() == 1) {
@@ -186,9 +184,6 @@ int huffman_decoder(struct huffcodetab *h, int *x, int *y, int *v, int *w) {
         
         //x and y are reversed in the test bitstream
         //Reverse x and y here to make test bitstream work
-        
-//        //removed 11/11/92 -ag
-//         {int i=*x; *x=*y; *y=i;}
 
         if (h->linbits) {// ??
             if ((h->xlen - 1) == *x) {

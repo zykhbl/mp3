@@ -261,10 +261,10 @@ unsigned long hgetbits(int N) {
     register int j = N;
     register int k, tmp;
     
-    /*
-     if (N > MAX_LENGTH)
-     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
-     */
+    if (N > MAX_LENGTH) {
+        printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
+    }
+
     totbit += N;
     while (j > 0) {
         if (!buf_bit_idx) {

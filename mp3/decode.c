@@ -188,9 +188,6 @@ void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info_t *si, int gr
     }
 }
 
-/* Already declared in huffman.c
- struct huffcodetab ht[HTN];
- */
 int huffman_initialized = FALSE;
 char *huffdec = "/Users/weidong_wu/mp3/resource/huffdec.txt";
 
@@ -819,9 +816,10 @@ void create_syn_filter(double filter[64][SBLIMIT]) {
     }
 }
 
+char *dewindow = "/Users/weidong_wu/mp3/resource/dewindow.txt";
+
 //Window the restored sample
 //read in synthesis window
-char *dewindow = "/Users/weidong_wu/mp3/resource/dewindow.txt";
 void read_syn_window(double window[HAN_SIZE]) {
     int i, j[4];
     FILE *fp;
@@ -871,7 +869,6 @@ int subBandSynthesis(double *bandPtr, int channel, short *samples) {
         init = 0;
     }
     
-    //if (channel == 0)
     bufOffset[channel] = (bufOffset[channel] - 64) & 0x3ff;
     bufOffsetPtr = &((*buf)[channel][bufOffset[channel]]);
     
@@ -882,8 +879,7 @@ int subBandSynthesis(double *bandPtr, int channel, short *samples) {
         }
         bufOffsetPtr[i] = sum;
     }
-    //S(i,j) = D(j+32i) * U(j+32i+((i+1)>>1)*64)
-    //samples(i,j) = MWindow(j+32i) * bufPtr(j+32i+((i+1)>>1)*64)
+
     for (j = 0; j < 32; j++) {
         sum = 0;
         for (i = 0; i < 16; i++) {
@@ -891,7 +887,6 @@ int subBandSynthesis(double *bandPtr, int channel, short *samples) {
             sum += window[k] * (*buf)[channel][((k + (((i + 1) >> 1) << 6)) + bufOffset[channel]) & 0x3ff];
         }
         {
-            //long foo = (sum > 0) ? sum * SCALE + 0.5 : sum * SCALE - 0.5;
             long foo = sum * SCALE;
             if (foo >= (long)SCALE) {
                 samples[j] = SCALE - 1;
