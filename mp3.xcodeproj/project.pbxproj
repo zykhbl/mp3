@@ -11,6 +11,7 @@
 		205C4C221C8D28AD00DFEDF9 /* decode.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1B1C8D28AD00DFEDF9 /* decode.c */; };
 		205C4C231C8D28AD00DFEDF9 /* huffman.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1D1C8D28AD00DFEDF9 /* huffman.c */; };
 		205C4C241C8D28AD00DFEDF9 /* mp3_decoder.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1F1C8D28AD00DFEDF9 /* mp3_decoder.c */; };
+		207C837B1C8E74690014323B /* wav.c in Sources */ = {isa = PBXBuildFile; fileRef = 207C837A1C8E74690014323B /* wav.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -39,6 +40,7 @@
 		205C4C271C8D28C200DFEDF9 /* huffdec.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = huffdec.txt; sourceTree = "<group>"; };
 		205C4C281C8D28C200DFEDF9 /* MPEG-1_Audio_CD.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "MPEG-1_Audio_CD.pdf"; sourceTree = "<group>"; };
 		205C4C291C8D28C200DFEDF9 /* mymp3.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = mymp3.mp3; sourceTree = "<group>"; };
+		207C837A1C8E74690014323B /* wav.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = wav.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +75,7 @@
 			isa = PBXGroup;
 			children = (
 				205C4C201C8D28AD00DFEDF9 /* wav.h */,
+				207C837A1C8E74690014323B /* wav.c */,
 				205C4C1A1C8D28AD00DFEDF9 /* common.h */,
 				205C4C191C8D28AD00DFEDF9 /* common.c */,
 				205C4C1E1C8D28AD00DFEDF9 /* huffman.h */,
@@ -155,6 +158,7 @@
 				205C4C231C8D28AD00DFEDF9 /* huffman.c in Sources */,
 				205C4C221C8D28AD00DFEDF9 /* decode.c in Sources */,
 				205C4C241C8D28AD00DFEDF9 /* mp3_decoder.c in Sources */,
+				207C837B1C8E74690014323B /* wav.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

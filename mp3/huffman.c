@@ -21,18 +21,23 @@
  *  7/14/94 Juergen Koller      Bug fixes in Layer III code           *
  *********************************************************************/
 
-#include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "common.h"
 #include "huffman.h"
 
+#define MXOFF	250
+
+#define T huffcodetab
+
 HUFFBITS dmask = (HUFFBITS)1 << (sizeof(HUFFBITS) * 8 - 1);
 
-struct huffcodetab ht[HTN];//array of all huffcodtable headers
-
+//array of all huffcodtable headers
 //0..31 Huffman code table 0..31
 //32,33 count1-tables
+struct T ht[HTN];
 
 //read the huffman decoder table
 int read_decoder_table(FILE *fi) {
@@ -103,7 +108,7 @@ int read_decoder_table(FILE *fi) {
 
 //do the huffman-decoding
 //note! for counta,countb -the 4 bit value is returned in y, discard x
-int huffman_decoder(struct huffcodetab *h, int *x, int *y, int *v, int *w) {
+int huffman_decoder(T h, int *x, int *y, int *v, int *w) {
     HUFFBITS level;
     int point = 0;
     int error = 1;
@@ -211,4 +216,6 @@ int huffman_decoder(struct huffcodetab *h, int *x, int *y, int *v, int *w) {
     
     return error;    
 }
+
+#undef T
 

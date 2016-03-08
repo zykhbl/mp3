@@ -6,13 +6,101 @@
 //  Copyright © 2016年 zykhbl. All rights reserved.
 //
 
-#include <math.h>
 #include <stdlib.h>
-#include "common.h"
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+
 #include "decode.h"
 #include "huffman.h"
 
-void decode_info(Bit_stream_struc *bs, frame_params *fr_ps) {
+char *layer_names[3] = {"I", "II", "III"};
+int bitrate[3][15] = {
+    {0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448},
+    {0, 32, 48, 56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384},
+    {0, 32, 40, 48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320}
+};
+double s_freq[4] = {44.1, 48, 32, 0};
+char *mode_names[4] = {"stereo", "j-stereo", "dual-ch", "single-ch"};
+
+FILE *openTableFile(char *name) {
+    char fulname[80];
+    FILE *f;
+    
+    fulname[0] = '\0';
+    
+    strcat(fulname, name);
+    if( (f = fopen(fulname, "r")) == NULL ) {
+        fprintf(stderr,"\nopenTable: could not find %s\n", fulname);
+    }
+    
+    return f;
+}
+
+int seek_sync(Bit_stream_struc bs, unsigned long sync, int N) {
+    unsigned long aligning;
+    unsigned long val;
+    long maxi = (int)pow(2.0, (double)N) - 1;
+    
+    aligning = sstell(bs) % ALIGNING;
+    if (aligning) {
+        getbits(bs, (int)(ALIGNING - aligning));
+    }
+    
+    val = getbits(bs, N);
+    while (((val & maxi) != sync) && (!end_bs(bs))) {
+        val <<= ALIGNING;
+        val |= getbits(bs, ALIGNING);
+    }
+    
+    if (end_bs(bs)) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+int js_bound(int lay, int m_ext) {
+    static int jsb_table[3][4] =  {
+        {4, 8, 12, 16},
+        {4, 8, 12, 16},
+        {0, 4,  8, 16}
+    };//lay + m_e->jsbound
+    
+    if(lay < 1 || lay > 3 || m_ext < 0 || m_ext > 3) {
+        fprintf(stderr, "js_bound bad layer/modext (%d/%d)\n", lay, m_ext);
+        exit(1);
+    }
+    return(jsb_table[lay - 1][m_ext]);
+}
+
+//interpret data in hdr str to fields in fr_ps
+void hdr_to_frps(frame_params *fr_ps) {
+    layer *hdr = fr_ps->header;//(or pass in as arg?)
+    
+    fr_ps->actual_mode = hdr->mode;
+    fr_ps->stereo = (hdr->mode == MPG_MD_MONO) ? 1 : 2;
+    fr_ps->sblimit = SBLIMIT;
+    if(hdr->mode == MPG_MD_JOINT_STEREO) {
+        fr_ps->jsbound = js_bound(hdr->lay, hdr->mode_ext);
+    } else {
+        fr_ps->jsbound = fr_ps->sblimit;
+    }
+}
+
+void writeHdr(frame_params *fr_ps) {
+    layer *info = fr_ps->header;
+    
+    printf("HDR:  sync=FFF, id=%X, layer=%X, ep=%X, br=%X, sf=%X, pd=%X, ", info->version, info->lay, !info->error_protection, info->bitrate_index, info->sampling_frequency, info->padding);
+    
+    printf("pr=%X, m=%X, js=%X, c=%X, o=%X, e=%X\n", info->extension, info->mode, info->mode_ext, info->copyright, info->original, info->emphasis);
+    
+    printf("layer=%s, tot bitrate=%d, sfrq=%.1f, mode=%s, ", layer_names[info->lay-1], bitrate[info->lay-1][info->bitrate_index], s_freq[info->sampling_frequency], mode_names[info->mode]);
+    
+    printf("sblim=%d, jsbd=%d, ch=%d\n", fr_ps->sblimit, fr_ps->jsbound, fr_ps->stereo);
+}
+
+void decode_info(Bit_stream_struc bs, frame_params *fr_ps) {
     layer *hdr = fr_ps->header;
     
     hdr->version = get1bit(bs);// 0-保留的; 1-MPEG
@@ -29,7 +117,7 @@ void decode_info(Bit_stream_struc *bs, frame_params *fr_ps) {
     hdr->emphasis = (int)getbits(bs, 2);
 }
 
-void III_get_side_info(Bit_stream_struc *bs, III_side_info_t *si, frame_params *fr_ps) {
+void III_get_side_info(Bit_stream_struc bs, III_side_info_t *si, frame_params *fr_ps) {
     int ch, gr, i;
     int stereo = fr_ps->stereo;
     
@@ -218,7 +306,7 @@ void initialize_huffman() {
 void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info_t *si, int ch, int gr, int part2_start, frame_params *fr_ps) {
     int i, x, y;
     int v, w;
-    struct huffcodetab *h;
+    huffcodetab h;
     int region1Start;
     int region2Start;
     
@@ -927,7 +1015,7 @@ void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, frame_params *fr_p
     }
 }
 
-void buffer_CRC(Bit_stream_struc *bs, unsigned int *old_crc) {
+void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc) {
     *old_crc = (unsigned int)getbits(bs, 16);
 }
 

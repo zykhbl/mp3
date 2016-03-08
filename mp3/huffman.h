@@ -17,11 +17,16 @@
  *				removed				      *
  *********************************************************************/
 
+#ifndef mp3Decoder_huffman_h
+#define mp3Decoder_huffman_h
+
 #define HUFFBITS unsigned long int
 #define HTN	34
-#define MXOFF	250
 
-struct huffcodetab {
+#define T huffcodetab
+typedef struct T *T;
+
+struct T {
     char tablename[3];//string, containing table_description
     unsigned int xlen;//max. x-index+
     unsigned int ylen;//max. y-index+
@@ -34,11 +39,11 @@ struct huffcodetab {
     unsigned int treelen;//length of decoder tree
 };
 
-extern struct huffcodetab ht[HTN];//global memory block
-
-//array of all huffcodtable headers
-//0..31 Huffman code table 0..31
-//32,33 count1-tables
+extern struct T ht[HTN];
 
 extern int read_decoder_table(FILE *);
-extern int huffman_decoder(struct huffcodetab *, int *, int*, int*, int*);
+extern int huffman_decoder(T, int *, int*, int*, int*);
+
+#undef T
+
+#endif

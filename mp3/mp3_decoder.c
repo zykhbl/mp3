@@ -6,21 +6,13 @@
 //  Copyright © 2016年 zykhbl. All rights reserved.
 //
 
-//http://www.pudn.com/downloads52/sourcecode/multimedia/mpeg/detail181910.html
-//http://www.codeforge.cn/read/187196/huffdec.txt__html
-//http://www.jianshu.com/p/1d1f893e53e9
-//http://www.cnblogs.com/gaozehua/tag/音频编码/
-//http://standards.iso.org/ittf/PubliclyAvailableStandards/
-//http://usr.cc/article-1006-1.html
-
 //printf("\n1: totbit = %ld, frame_start = %d, main_data_end = %d, main_data_begin = %d, bytes_to_discard = %d \n", hsstell() / 8, frame_start, main_data_end, III_side_info.main_data_begin, bytes_to_discard);
 
-#include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "wav.h"
-#include "common.h"
 #include "decode.h"
 
 #define mp3_filename "/Users/weidong_wu/mp3/resource/mymp3.mp3"
@@ -28,7 +20,7 @@
 
 int main(int argc, char**argv) {
     FILE *musicout;
-    Bit_stream_struc bs;
+    Bit_stream_struc bs = create_Bit_stream_struc();
     frame_params fr_ps;
     III_side_info_t III_side_info;
     III_scalefac_t III_scalefac;
@@ -52,13 +44,13 @@ int main(int argc, char**argv) {
     
     writeWAVHeader(musicout);
     
-    open_bit_stream_r(&bs, mp3_filename, BUFFER_SIZE);
+    open_bit_stream_r(bs, mp3_filename, BUFFER_SIZE);
     
     fr_ps.header = &info;
     
     sample_frames = 0;
-    while(!end_bs(&bs)) {
-        sync = seek_sync(&bs, SYNC_WORD, SYNC_WORD_LENGTH);//尝试帧同步
+    while(!end_bs(bs)) {
+        sync = seek_sync(bs, SYNC_WORD, SYNC_WORD_LENGTH);//尝试帧同步
         if (!sync) {
             done = TRUE;
             printf("\nFrame cannot be located\n");
@@ -66,7 +58,7 @@ int main(int argc, char**argv) {
             break;
         }
 
-        decode_info(&bs, &fr_ps);//解码帧头
+        decode_info(bs, &fr_ps);//解码帧头
 
         hdr_to_frps(&fr_ps);//将fr_ps.header中的信息解读到fr_ps的相关域中
 
@@ -77,7 +69,7 @@ int main(int argc, char**argv) {
         printf("\r%05lu", frameNum++);
         
         if (info.error_protection) {//如果有的话，读取错误码
-            buffer_CRC(&bs, &old_crc);
+            buffer_CRC(bs, &old_crc);
         }
         
         switch (info.lay) {
@@ -89,12 +81,12 @@ int main(int argc, char**argv) {
                 
                 bitsPerSlot = 8;
                 
-                III_get_side_info(&bs, &III_side_info, &fr_ps);//读取Side信息
+                III_get_side_info(bs, &III_side_info, &fr_ps);//读取Side信息
                 
                 nSlots = main_data_slots(fr_ps);//计算slot个数
                 
                 for (; nSlots > 0; nSlots--) {//读主数据(Audio Data)
-                    hputbuf((unsigned int)getbits(&bs, 8), 8);
+                    hputbuf((unsigned int)getbits(bs, 8), 8);
                 }
                 
                 main_data_end = (int)(hsstell() / 8);//of privious frame
@@ -187,7 +179,7 @@ int main(int argc, char**argv) {
         }
     }
     
-    close_bit_stream_r(&bs);   
+    close_bit_stream_r(bs);
     fclose(musicout);   
     printf("\nDecoding done.\n");
     
