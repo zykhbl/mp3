@@ -10,18 +10,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-
-#include "decode.h"
 #include "huffman.h"
 
-char *layer_names[3] = {"I", "II", "III"};
-int bitrate[3][15] = {
-    {0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448},
-    {0, 32, 48, 56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384},
-    {0, 32, 40, 48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320}
-};
-double s_freq[4] = {44.1, 48, 32, 0};
-char *mode_names[4] = {"stereo", "j-stereo", "dual-ch", "single-ch"};
+#include "decode.h"
+
+#define	HAN_SIZE			512
+#define	SCALE				32768
+
+#define	PI					3.14159265358979
+#define	PI64				PI/64
+#define	PI4					PI/4
 
 FILE *openTableFile(char *name) {
     char fulname[80];
@@ -35,245 +33,6 @@ FILE *openTableFile(char *name) {
     }
     
     return f;
-}
-
-int seek_sync(Bit_stream_struc bs, unsigned long sync, int N) {
-    unsigned long aligning;
-    unsigned long val;
-    long maxi = (int)pow(2.0, (double)N) - 1;
-    
-    aligning = sstell(bs) % ALIGNING;
-    if (aligning) {
-        getbits(bs, (int)(ALIGNING - aligning));
-    }
-    
-    val = getbits(bs, N);
-    while (((val & maxi) != sync) && (!end_bs(bs))) {
-        val <<= ALIGNING;
-        val |= getbits(bs, ALIGNING);
-    }
-    
-    if (end_bs(bs)) {
-        return 0;
-    } else {
-        return 1;
-    }
-}
-
-int js_bound(int lay, int m_ext) {
-    static int jsb_table[3][4] =  {
-        {4, 8, 12, 16},
-        {4, 8, 12, 16},
-        {0, 4,  8, 16}
-    };//lay + m_e->jsbound
-    
-    if(lay < 1 || lay > 3 || m_ext < 0 || m_ext > 3) {
-        fprintf(stderr, "js_bound bad layer/modext (%d/%d)\n", lay, m_ext);
-        exit(1);
-    }
-    return(jsb_table[lay - 1][m_ext]);
-}
-
-//interpret data in hdr str to fields in fr_ps
-void hdr_to_frps(frame_params *fr_ps) {
-    layer *hdr = fr_ps->header;//(or pass in as arg?)
-    
-    fr_ps->actual_mode = hdr->mode;
-    fr_ps->stereo = (hdr->mode == MPG_MD_MONO) ? 1 : 2;
-    fr_ps->sblimit = SBLIMIT;
-    if(hdr->mode == MPG_MD_JOINT_STEREO) {
-        fr_ps->jsbound = js_bound(hdr->lay, hdr->mode_ext);
-    } else {
-        fr_ps->jsbound = fr_ps->sblimit;
-    }
-}
-
-void writeHdr(frame_params *fr_ps) {
-    layer *info = fr_ps->header;
-    
-    printf("HDR:  sync=FFF, id=%X, layer=%X, ep=%X, br=%X, sf=%X, pd=%X, ", info->version, info->lay, !info->error_protection, info->bitrate_index, info->sampling_frequency, info->padding);
-    
-    printf("pr=%X, m=%X, js=%X, c=%X, o=%X, e=%X\n", info->extension, info->mode, info->mode_ext, info->copyright, info->original, info->emphasis);
-    
-    printf("layer=%s, tot bitrate=%d, sfrq=%.1f, mode=%s, ", layer_names[info->lay-1], bitrate[info->lay-1][info->bitrate_index], s_freq[info->sampling_frequency], mode_names[info->mode]);
-    
-    printf("sblim=%d, jsbd=%d, ch=%d\n", fr_ps->sblimit, fr_ps->jsbound, fr_ps->stereo);
-}
-
-void decode_info(Bit_stream_struc bs, frame_params *fr_ps) {
-    layer *hdr = fr_ps->header;
-    
-    hdr->version = get1bit(bs);// 0-保留的; 1-MPEG
-    hdr->lay = 4 - (int)getbits(bs, 2); // 00-未定义; 01-Layer 3; 10-Layer 2; 11-Layer 1
-    hdr->error_protection = !get1bit(bs); // 0转为TRUE，检验；1转为FALSE，不校验
-    hdr->bitrate_index = (int)getbits(bs, 4);
-    hdr->sampling_frequency = (int)getbits(bs, 2);
-    hdr->padding = get1bit(bs);
-    hdr->extension = get1bit(bs);
-    hdr->mode = (int)getbits(bs, 2);
-    hdr->mode_ext = (int)getbits(bs, 2);
-    hdr->copyright = get1bit(bs);
-    hdr->original = get1bit(bs);
-    hdr->emphasis = (int)getbits(bs, 2);
-}
-
-void III_get_side_info(Bit_stream_struc bs, III_side_info_t *si, frame_params *fr_ps) {
-    int ch, gr, i;
-    int stereo = fr_ps->stereo;
-    
-    si->main_data_begin = (unsigned)getbits(bs, 9);
-    if (stereo == 1) {
-        si->private_bits = (unsigned)getbits(bs, 5);
-    } else {
-        si->private_bits = (unsigned)getbits(bs, 3);
-    }
-    
-    for (ch = 0; ch < stereo; ch++) {
-        for (i = 0; i < 4; i++) {
-            si->ch[ch].scfsi[i] = get1bit(bs);
-        }
-    }
-    
-    for (gr = 0; gr < 2; gr++) {
-        for (ch = 0; ch < stereo; ch++) {
-            si->ch[ch].gr[gr].part2_3_length = (unsigned)getbits(bs, 12);
-            si->ch[ch].gr[gr].big_values = (unsigned)getbits(bs, 9);
-            si->ch[ch].gr[gr].global_gain = (unsigned)getbits(bs, 8);
-            si->ch[ch].gr[gr].scalefac_compress = (unsigned)getbits(bs, 4);
-            si->ch[ch].gr[gr].window_switching_flag = get1bit(bs);
-            if (si->ch[ch].gr[gr].window_switching_flag) {
-                si->ch[ch].gr[gr].block_type = (unsigned)getbits(bs, 2);
-                si->ch[ch].gr[gr].mixed_block_flag = get1bit(bs);
-                for (i = 0; i < 2; i++) {
-                    si->ch[ch].gr[gr].table_select[i] = (unsigned)getbits(bs, 5);
-                }
-                for (i = 0; i < 3; i++) {
-                    si->ch[ch].gr[gr].subblock_gain[i] = (unsigned)getbits(bs, 3);
-                }
-
-                if (si->ch[ch].gr[gr].block_type == 0) {//Set region_count parameters since they are implicit in this case.
-                    printf("Side info bad: block_type == 0 in split block.\n");
-                    exit(0);
-                } else if (si->ch[ch].gr[gr].block_type == 2 && si->ch[ch].gr[gr].mixed_block_flag == 0) {
-                    si->ch[ch].gr[gr].region0_count = 8;//MI 9;
-                } else {
-                    si->ch[ch].gr[gr].region0_count = 7;//MI 8;
-                }
-                si->ch[ch].gr[gr].region1_count = 20 - si->ch[ch].gr[gr].region0_count;
-            } else {
-                for (i = 0; i < 3; i++) {
-                    si->ch[ch].gr[gr].table_select[i] = (unsigned)getbits(bs, 5);
-                }
-                si->ch[ch].gr[gr].region0_count = (unsigned)getbits(bs, 4);
-                si->ch[ch].gr[gr].region1_count = (unsigned)getbits(bs, 3);
-                si->ch[ch].gr[gr].block_type = 0;
-            }
-            si->ch[ch].gr[gr].preflag = get1bit(bs);
-            si->ch[ch].gr[gr].scalefac_scale = get1bit(bs);
-            si->ch[ch].gr[gr].count1table_select = get1bit(bs);
-        }
-    }
-}
-
-struct {
-    int l[5];
-    int s[3];
-} sfbtable = {
-    {0, 6, 11, 16, 21},
-    {0, 6, 12}
-};
-
-int slen[2][16] = {
-    {0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4},
-    {0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3}
-};
-
-struct {
-    int l[23];
-    int s[14];
-} sfBandIndex[3] = {
-    {
-        {0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 52, 62, 74, 90, 110, 134, 162, 196, 238, 288, 342, 418, 576},
-        {0, 4, 8, 12, 16, 22, 30, 40, 52, 66, 84, 106, 136, 192}
-    },
-    {
-        {0, 4, 8, 12, 16, 20, 24, 30, 36, 42, 50, 60, 72, 88, 106, 128, 156, 190, 230, 276, 330, 384, 576},
-        {0, 4, 8, 12, 16, 22, 28, 38, 50, 64, 80, 100, 126, 192}
-    },
-    {
-        {0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 54, 66, 82, 102, 126, 156, 194, 240, 296, 364, 448, 550, 576},
-        {0, 4, 8, 12, 16, 22, 30, 42, 58, 78, 104, 138, 180, 192}
-    }
-};
-
-void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info_t *si, int gr, int ch, frame_params *fr_ps) {
-    int sfb, i, window;
-    struct gr_info_s *gr_info = &(si->ch[ch].gr[gr]);
-    
-    if (gr_info->window_switching_flag && (gr_info->block_type == 2)) {
-        if (gr_info->mixed_block_flag) {//Mix block (block type = 2 and mixed block flag = 1)
-            
-            //576笔频谱值被分为 17 个scale factor频带
-            //slen1 表示频带 0 到 10 的scale factor大小；slen2 表示频带 11 到 16 的scale factor大小
-            //其中：part2_length = (8 + 3 × 3) × slen1 + (6 × 3) × slen2
-            
-            for (sfb = 0; sfb < 8; sfb++) {//前面8个频带为 long block
-                (*scalefac)[ch].l[sfb] = (int)hgetbits(slen[0][gr_info->scalefac_compress]);
-            }
-            
-            //后面9个频带为short block，每一个频带包含3个窗口（window）
-            for (sfb = 3; sfb < 6; sfb++) {
-                for (window = 0; window < 3; window++) {
-                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[0][gr_info->scalefac_compress]);
-                }
-            }
-            for (sfb = 6; sfb < 12; sfb++) {
-                for (window = 0; window < 3; window++) {
-                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[1][gr_info->scalefac_compress]);
-                }
-            }
-            
-            for (sfb = 12, window = 0; window < 3; window++) {//剩余的数组清零
-                (*scalefac)[ch].s[window][sfb] = 0;
-            }
-        } else {//Short block (block type = 2 and mixed block flag = 0)
-            
-            //576笔频谱值被分为 12 个 scale factor 频带
-            //slen1 表示频带 0 到 5 的 scale factor 大小；slen2 表示频带 6 到 11 的 scale factor 大小
-            //其中：part2_length = 3 × 6 × slen1 + 3 × 6 × slen2
-            
-            for (i = 0; i < 2; i++) {
-                for (sfb = sfbtable.s[i]; sfb < sfbtable.s[i + 1]; sfb++) {
-                    for (window = 0; window < 3; window++) {
-                        (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[i][gr_info->scalefac_compress]);
-                    }
-                }
-            }
-            
-            for (sfb = 12, window = 0; window < 3; window++) {//剩余的数组清零
-                (*scalefac)[ch].s[window][sfb] = 0;
-            }
-        }
-    } else {//Long block  (block type = 0、 1、 3)
-        
-        //576笔频谱值被分为 21 个 scale factor 频带
-        //slen1 表示频带 0 到 10 的 scale factor 大小；slen2 表示频带 11 到 20 的 scale factor 大小
-        //其中：part2_length = 11 × slen1 + 10 × slen2
-        
-        for (i = 0; i < 4; i++) {
-            
-            //当 SCFSI 为 0 表示要读取granule0 和 granule1；当为 1 时只须读取granule0；且granule0的信息与granule1共享
-            //即：当解码到第二组时，如果 SCFSI 被设定为 1，则第二组的 scale factor 不必计算，可以由第一组中直接获得
-            
-            if ((si->ch[ch].scfsi[i] == 0) || (gr == 0)) {
-                for (sfb = sfbtable.l[i]; sfb < sfbtable.l[i + 1]; sfb++) {
-                    (*scalefac)[ch].l[sfb] = (int)hgetbits(slen[(i < 2) ? 0: 1][gr_info->scalefac_compress]);
-                }
-            }
-        }
-        
-        (*scalefac)[ch].l[22] = 0;
-    }
 }
 
 int huffman_initialized = FALSE;
@@ -303,7 +62,25 @@ void initialize_huffman() {
     huffman_initialized = TRUE;
 }
 
-void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info_t *si, int ch, int gr, int part2_start, frame_params *fr_ps) {
+struct {
+    int l[23];
+    int s[14];
+} sfBandIndex[3] = {
+    {
+        {0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 52, 62, 74, 90, 110, 134, 162, 196, 238, 288, 342, 418, 576},
+        {0, 4, 8, 12, 16, 22, 30, 40, 52, 66, 84, 106, 136, 192}
+    },
+    {
+        {0, 4, 8, 12, 16, 20, 24, 30, 36, 42, 50, 60, 72, 88, 106, 128, 156, 190, 230, 276, 330, 384, 576},
+        {0, 4, 8, 12, 16, 22, 28, 38, 50, 64, 80, 100, 126, 192}
+    },
+    {
+        {0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 54, 66, 82, 102, 126, 156, 194, 240, 296, 364, 448, 550, 576},
+        {0, 4, 8, 12, 16, 22, 30, 42, 58, 78, 104, 138, 180, 192}
+    }
+};
+
+void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, int gr, int part2_start, frame fr_ps) {
     int i, x, y;
     int v, w;
     huffcodetab h;
@@ -318,8 +95,8 @@ void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info_t *si, int c
         region1Start = 36; //sfb[9 / 3] * 3 = 36
         region2Start = 576;//No Region2 for short block case
     } else {//Find region boundary for long block case
-        region1Start = sfBandIndex[fr_ps->header->sampling_frequency].l[(*si).ch[ch].gr[gr].region0_count + 1];//MI
-        region2Start = sfBandIndex[fr_ps->header->sampling_frequency].l[(*si).ch[ch].gr[gr].region0_count + (*si).ch[ch].gr[gr].region1_count + 2];//MI
+        region1Start = sfBandIndex[fr_ps->header.sampling_frequency].l[(*si).ch[ch].gr[gr].region0_count + 1];//MI
+        region2Start = sfBandIndex[fr_ps->header.sampling_frequency].l[(*si).ch[ch].gr[gr].region0_count + (*si).ch[ch].gr[gr].region1_count + 2];//MI
     }
     
     //为了使各组量化频谱系数所需的比特数最少，无噪声编码把一组576个量化频谱系数分成3个region（由低频到高频分别为big_value区，count1区，zero区），每个region一个霍夫曼码书
@@ -369,8 +146,8 @@ void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info_t *si, int c
 
 int pretab[22] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 2, 0};
 
-void III_dequantize_sample(long int is[SBLIMIT][SSLIMIT], double xr[SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, int ch, frame_params *fr_ps) {
-    int ss, sb, cb = 0, sfreq = fr_ps->header->sampling_frequency;
+void III_dequantize_sample(long int is[SBLIMIT][SSLIMIT], double xr[SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, int ch, frame fr_ps) {
+    int ss, sb, cb = 0, sfreq = fr_ps->header.sampling_frequency;
     int next_cb_boundary, cb_begin = 0, cb_width = 0, sign;
     
     //choose correct scalefactor band per block type, initalize boundary
@@ -441,8 +218,8 @@ void III_dequantize_sample(long int is[SBLIMIT][SSLIMIT], double xr[SBLIMIT][SSL
     }
 }
 
-void III_reorder(double xr[SBLIMIT][SSLIMIT], double ro[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame_params *fr_ps) {
-    int sfreq = fr_ps->header->sampling_frequency;
+void III_reorder(double xr[SBLIMIT][SSLIMIT], double ro[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame fr_ps) {
+    int sfreq = fr_ps->header.sampling_frequency;
     int sfb, sfb_start, sfb_lines;
     int sb, ss, window, freq, src_line, des_line;
     
@@ -491,11 +268,11 @@ void III_reorder(double xr[SBLIMIT][SSLIMIT], double ro[SBLIMIT][SSLIMIT], struc
     }
 }
 
-void III_stereo(double xr[2][SBLIMIT][SSLIMIT], double lr[2][SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, frame_params *fr_ps) {
-    int sfreq = fr_ps->header->sampling_frequency;
+void III_stereo(double xr[2][SBLIMIT][SSLIMIT], double lr[2][SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, frame fr_ps) {
+    int sfreq = fr_ps->header.sampling_frequency;
     int stereo = fr_ps->stereo;
-    int ms_stereo = (fr_ps->header->mode == MPG_MD_JOINT_STEREO) && (fr_ps->header->mode_ext & 0x2);
-    int i_stereo = (fr_ps->header->mode == MPG_MD_JOINT_STEREO) && (fr_ps->header->mode_ext & 0x1);
+    int ms_stereo = (fr_ps->header.mode == MPG_MD_JOINT_STEREO) && (fr_ps->header.mode_ext & 0x2);
+    int i_stereo = (fr_ps->header.mode == MPG_MD_JOINT_STEREO) && (fr_ps->header.mode_ext & 0x1);
     int sfb;
     int i, j, sb, ss, ch, is_pos[576];
     double is_ratio[576];
@@ -713,7 +490,7 @@ void III_stereo(double xr[2][SBLIMIT][SSLIMIT], double lr[2][SBLIMIT][SSLIMIT], 
 
 double Ci[8] = {-0.6, -0.535, -0.33, -0.185, -0.095, -0.041, -0.0142, -0.0037};
 
-void III_antialias(double xr[SBLIMIT][SSLIMIT], double hybridIn[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame_params *fr_ps) {
+void III_antialias(double xr[SBLIMIT][SSLIMIT], double hybridIn[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame fr_ps) {
     static int    init = 1;
     static double ca[8], cs[8];
     double        bu, bd;//upper and lower butterfly inputs
@@ -857,7 +634,7 @@ void inv_mdct(double in[18], double out[36], int block_type) {
 
 //fsIn:freq samples per subband in
 //tsOut:time samples per subband out
-void III_hybrid(double fsIn[SSLIMIT], double tsOut[SSLIMIT], int sb, int ch, struct gr_info_s *gr_info, frame_params *fr_ps) {
+void III_hybrid(double fsIn[SSLIMIT], double tsOut[SSLIMIT], int sb, int ch, struct gr_info_s *gr_info, frame fr_ps) {
     int ss;
     double rawout[36];
     static double prevblck[2][SBLIMIT][SSLIMIT];
@@ -990,7 +767,7 @@ int subBandSynthesis(double *bandPtr, int channel, short *samples) {
     return clip;
 }
 
-void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, frame_params *fr_ps, int done, FILE *outFile, unsigned long *psampFrames) {
+void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, frame fr_ps, int done, FILE *outFile, unsigned long *psampFrames) {
     int i, j, l;
     int stereo = fr_ps->stereo;
     static short int outsamp[1600];
@@ -1013,37 +790,5 @@ void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, frame_params *fr_p
         fwrite(outsamp, 2, (int)k, outFile);
         k = 0;
     }
-}
-
-void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc) {
-    *old_crc = (unsigned int)getbits(bs, 16);
-}
-
-extern int bitrate[3][15];
-extern double s_freq[4];
-
-int main_data_slots(frame_params fr_ps) {//根据帧头信息，返回当前帧音频主数据的slot个数
-    int nSlots;
-    
-    nSlots = (144 * bitrate[2][fr_ps.header->bitrate_index]) / s_freq[fr_ps.header->sampling_frequency];
-    
-    if (fr_ps.header->padding) {//如果frame中包含附加slot，以调整平均比特率与采样频率一致，那么加上1字节
-        nSlots++;
-    }
-    
-    nSlots -= 4;//减去帧头4字节(32位)
-    
-    if (fr_ps.header->error_protection) {//如果有错误码校验，再减去2字节(16位)
-        nSlots -= 2;
-    }
-    
-    //减去Side信息，Side info大小由声道决定，单声道17字节，双声道32位字节
-    if (fr_ps.stereo == 1) {
-        nSlots -= 17;
-    } else {
-        nSlots -= 32;
-    }
-    
-    return nSlots;
 }
 

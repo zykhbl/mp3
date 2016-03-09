@@ -41,8 +41,8 @@ struct T {
 
 extern struct T ht[HTN];
 
-extern int read_decoder_table(FILE *);
-extern int huffman_decoder(T, int *, int*, int*, int*);
+extern int read_decoder_table(FILE *fi);
+extern int huffman_decoder(T h, int *x, int *y, int *v, int *w);
 
 #undef T
 

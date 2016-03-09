@@ -21,11 +21,10 @@
 int main(int argc, char**argv) {
     FILE *musicout;
     Bit_stream_struc bs = create_Bit_stream_struc();
-    frame_params fr_ps;
-    III_side_info_t III_side_info;
+    frame fr_ps = create_frame_struc();
+    III_side_info side_info = create_III_side_info();
     III_scalefac_t III_scalefac;
     unsigned int old_crc;
-    layer info;
     int sync, clip;
     int done = FALSE;
     unsigned long frameNum = 0;
@@ -46,33 +45,31 @@ int main(int argc, char**argv) {
     
     open_bit_stream_r(bs, mp3_filename, BUFFER_SIZE);
     
-    fr_ps.header = &info;
-    
     sample_frames = 0;
     while(!end_bs(bs)) {
         sync = seek_sync(bs, SYNC_WORD, SYNC_WORD_LENGTH);//尝试帧同步
         if (!sync) {
             done = TRUE;
             printf("\nFrame cannot be located\n");
-            out_fifo(*pcm_sample, 3, &fr_ps, done, musicout, &sample_frames);
+            out_fifo(*pcm_sample, 3, fr_ps, done, musicout, &sample_frames);
             break;
         }
 
-        decode_info(bs, &fr_ps);//解码帧头
+        decode_info(bs, fr_ps);//解码帧头
 
-        hdr_to_frps(&fr_ps);//将fr_ps.header中的信息解读到fr_ps的相关域中
+        hdr_to_frps(fr_ps);//将fr_ps.header中的信息解读到fr_ps的相关域中
 
         if(frameNum == 0) {//输出相关信息
-            writeHdr(&fr_ps);
+            writeHdr(fr_ps);
         }
         
         printf("\r%05lu", frameNum++);
         
-        if (info.error_protection) {//如果有的话，读取错误码
+        if (fr_ps->header.error_protection) {//如果有的话，读取错误码
             buffer_CRC(bs, &old_crc);
         }
         
-        switch (info.lay) {
+        switch (fr_ps->header.lay) {
             case 3: {
                 //main_data_end 可以不初始化为0，但如果不初始化，它会在使用了栈中上一次循环遗留下的值，虽然不影响结果，但是会使打印信息看起来很怪
                 int nSlots, main_data_end = 0, flush_main;
@@ -81,7 +78,7 @@ int main(int argc, char**argv) {
                 
                 bitsPerSlot = 8;
                 
-                III_get_side_info(bs, &III_side_info, &fr_ps);//读取Side信息
+                III_get_side_info(bs, side_info, fr_ps);//读取Side信息
                 
                 nSlots = main_data_slots(fr_ps);//计算slot个数
                 
@@ -95,7 +92,7 @@ int main(int argc, char**argv) {
                     main_data_end++;
                 }
                 
-                bytes_to_discard = frame_start - main_data_end - III_side_info.main_data_begin;
+                bytes_to_discard = frame_start - main_data_end - side_info->main_data_begin;
                 
                 if(main_data_end > 4096) {//环结构，缓存数组从[0, 4095], 不需要>= 4096，因为hputbuf，hgetbits等操作做了求余；不用应该也可以
                     frame_start -= 4096;
@@ -117,32 +114,32 @@ int main(int argc, char**argv) {
                 for (gr = 0; gr < 2; gr++) {
                     double lr[2][SBLIMIT][SSLIMIT], ro[2][SBLIMIT][SSLIMIT];
 
-                    for (ch = 0; ch < fr_ps.stereo; ch++) {//主解码
+                    for (ch = 0; ch < fr_ps->stereo; ch++) {//主解码
                         long int is[SBLIMIT][SSLIMIT];//保存量化数据
                         int part2_start;
                         part2_start = (int)hsstell();//totbit 的位置，即：当前帧音频主数据(main data)：scale_factor + hufman_code的开始位置
 
-                        III_get_scale_factors(&III_scalefac, &III_side_info, gr, ch, &fr_ps);//获取比例因子
+                        III_get_scale_factors(&III_scalefac, side_info, gr, ch, fr_ps);//获取比例因子
 
-                        III_hufman_decode(is, &III_side_info, ch, gr, part2_start, &fr_ps);//huffman解码
+                        III_hufman_decode(is, side_info, ch, gr, part2_start, fr_ps);//huffman解码
 
-                        III_dequantize_sample(is, ro[ch], &III_scalefac, &(III_side_info.ch[ch].gr[gr]), ch, &fr_ps);//反量化采样
+                        III_dequantize_sample(is, ro[ch], &III_scalefac, &(side_info->ch[ch].gr[gr]), ch, fr_ps);//反量化采样
                     }
 
-                    III_stereo(ro, lr, &III_scalefac, &(III_side_info.ch[0].gr[gr]), &fr_ps);//立体声处理
+                    III_stereo(ro, lr, &III_scalefac, &(side_info->ch[0].gr[gr]), fr_ps);//立体声处理
                     
-                    for (ch = 0; ch < fr_ps.stereo; ch++) {
+                    for (ch = 0; ch < fr_ps->stereo; ch++) {
                         double re[SBLIMIT][SSLIMIT];
                         double hybridIn[SBLIMIT][SSLIMIT];//hybrid filter input
                         double hybridOut[SBLIMIT][SSLIMIT];//hybrid filter out
                         double polyPhaseIn[SBLIMIT];//polyPhase input
                         
-                        III_reorder(lr[ch], re, &(III_side_info.ch[ch].gr[gr]), &fr_ps);
+                        III_reorder(lr[ch], re, &(side_info->ch[ch].gr[gr]), fr_ps);
 
-                        III_antialias(re, hybridIn, &(III_side_info.ch[ch].gr[gr]), &fr_ps);//抗锯齿处理
+                        III_antialias(re, hybridIn, &(side_info->ch[ch].gr[gr]), fr_ps);//抗锯齿处理
 
                         for (sb = 0; sb < SBLIMIT; sb++) {//IMDCT(hybrid synthesis)
-                            III_hybrid(hybridIn[sb], hybridOut[sb], sb, ch, &(III_side_info.ch[ch].gr[gr]), &fr_ps);
+                            III_hybrid(hybridIn[sb], hybridOut[sb], sb, ch, &(side_info->ch[ch].gr[gr]), fr_ps);
                         }
                         
                         for (ss = 0; ss < 18; ss++) {//多相频率倒置
@@ -162,7 +159,7 @@ int main(int argc, char**argv) {
                         }
                     }
 
-                    out_fifo(*pcm_sample, 18, &fr_ps, done, musicout, &sample_frames);//PCM输出(Output PCM sample points for one granule(颗粒))
+                    out_fifo(*pcm_sample, 18, fr_ps, done, musicout, &sample_frames);//PCM输出(Output PCM sample points for one granule(颗粒))
                 }
                 
                 if(clip > 0) {

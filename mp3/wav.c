@@ -2,7 +2,7 @@
 //  wav.c
 //  mp3
 //
-//  Created by weidong_wu on 16/3/8.
+//  Created by zykhbl on 16/3/8.
 //  Copyright © 2016年 zykhbl. All rights reserved.
 //
 

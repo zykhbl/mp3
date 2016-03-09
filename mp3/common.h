@@ -15,6 +15,8 @@ typedef struct T *T;
 #define	FALSE				0
 #define	TRUE				1
 
+#define	BUFFER_SIZE			4096
+
 extern void *mem_alloc(unsigned long block, char *item);
 
 extern T create_Bit_stream_struc();
