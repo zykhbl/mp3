@@ -58,7 +58,7 @@ extern void hdr_to_frps(T fr_ps);
 extern void writeHdr(T fr_ps);
 
 extern void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc);
-extern int main_data_slots(frame fr_ps);
+extern int main_data_slots(T fr_ps);
 
 #undef T
 

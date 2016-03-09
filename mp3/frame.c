@@ -119,7 +119,7 @@ void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc) {
     *old_crc = (unsigned int)getbits(bs, 16);
 }
 
-int main_data_slots(frame fr_ps) {//根据帧头信息，返回当前帧音频主数据的slot个数
+int main_data_slots(T fr_ps) {//根据帧头信息，返回当前帧音频主数据的slot个数
     int nSlots;
     
     nSlots = (144 * bitrate[2][fr_ps->header.bitrate_index]) / s_freq[fr_ps->header.sampling_frequency];
