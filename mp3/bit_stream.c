@@ -47,7 +47,7 @@ void open_bit_stream_r(T bs, char *bs_filenam, int size) {
     }
     
     alloc_buffer(bs, size);
-    bs->buf_byte_idx = 0;
+    bs->buf_byte_idx = -1;
     bs->buf_bit_idx = 0;
     bs->totbit = 0;
     bs->mode = READ_MODE;
@@ -89,31 +89,19 @@ unsigned long sstell(T bs) {
     return bs->totbit;
 }
 
-void refill_buffer(T bs) {
-    register int i = bs->buf_size - 2 - bs->buf_byte_idx;
-    register unsigned long n = 1;
-    
-    while ((i >= 0) && (!bs->eob)) {
-        n = fread(&bs->buf[i--], sizeof(unsigned char), 1, bs->pt);
-        if (!n) {//bs->eob一直为0，除非是读到文件的最后EOF时，i > 0，此时bs->eob > 0，但当 i == 0 时，bs->eob ＝ 0
-            bs->eob = i + 1;
-        }
-    }
-}
-
 void will_refill_buffer(T bs) {
     if (!bs->buf_bit_idx) {
         bs->buf_bit_idx = 8;
-        bs->buf_byte_idx--;
-        if ((bs->buf_byte_idx < MINIMUM) || (bs->buf_byte_idx < bs->eob)) {
-            if (bs->eob) {
+        bs->buf_byte_idx++;
+        if (bs->buf_byte_idx == bs->eob) {
+            if (feof(bs->pt)) {
                 bs->eobs = TRUE;
             } else {
-                for (register int i = bs->buf_byte_idx; i >= 0; i--) {
-                    bs->buf[bs->buf_size - 1 - bs->buf_byte_idx + i] = bs->buf[i];
+                bs->eob = (int)fread(bs->buf, sizeof(unsigned char), bs->buf_size, bs->pt);
+                if (feof(bs->pt)) {
+                    bs->eobs = TRUE;
                 }
-                refill_buffer(bs);
-                bs->buf_byte_idx = bs->buf_size - 1;
+                bs->buf_byte_idx = 0;
             }
         }
     }
@@ -128,11 +116,14 @@ unsigned int get1bit(T bs) {
     bs->totbit++;
     
     will_refill_buffer(bs);
+    if (bs->eobs) {
+        return 0;
+    }
     
     bit = bs->buf[bs->buf_byte_idx] & mask[bs->buf_bit_idx - 1];
     bit = bit >> (bs->buf_bit_idx - 1);
     bs->buf_bit_idx--;
-    return(bit);
+    return bit;
 }
 
 int putmask[9] = {0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
@@ -150,6 +141,9 @@ unsigned long getbits(T bs, int N) {
     bs->totbit += N;
     while (j > 0) {
         will_refill_buffer(bs);
+        if (bs->eobs) {
+            return 0;
+        }
         
         k = MIN(j, bs->buf_bit_idx);
         tmp = bs->buf[bs->buf_byte_idx] & putmask[bs->buf_bit_idx];
