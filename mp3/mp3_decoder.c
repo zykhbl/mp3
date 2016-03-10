@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "wav.h"
 #include "common.h"
+#include "wav.h"
 #include "decode.h"
 
 #define mp3_filename "/Users/weidong_wu/mp3/resource/mymp3.mp3"
@@ -47,7 +47,7 @@ int main(int argc, char**argv) {
         if (!sync) {
             done = TRUE;
             printf("\nFrame cannot be located\n");
-            out_fifo(*pcm_sample, 3, fr_ps, done, musicout, &sample_frames);
+            out_fifo(*pcm_sample, 3, fr_ps->stereo, done, musicout, &sample_frames);
             break;
         }
 
@@ -154,7 +154,7 @@ int main(int argc, char**argv) {
                         }
                     }
 
-                    out_fifo(*pcm_sample, 18, fr_ps, done, musicout, &sample_frames);//PCM输出(Output PCM sample points for one granule(颗粒))
+                    out_fifo(*pcm_sample, 18, fr_ps->stereo, done, musicout, &sample_frames);//PCM输出(Output PCM sample points for one granule(颗粒))
                 }
                 
                 if(clip > 0) {

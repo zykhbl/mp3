@@ -89,10 +89,10 @@
 		205C4C111C8D27AA00DFEDF9 /* mp3 */ = {
 			isa = PBXGroup;
 			children = (
-				205C4C201C8D28AD00DFEDF9 /* wav.h */,
-				207C837A1C8E74690014323B /* wav.c */,
 				205C4C1A1C8D28AD00DFEDF9 /* common.h */,
 				20FB00FE1C91291600D1E8D9 /* common.c */,
+				205C4C201C8D28AD00DFEDF9 /* wav.h */,
+				207C837A1C8E74690014323B /* wav.c */,
 				20FB00FC1C91276100D1E8D9 /* bit_stream.h */,
 				20FB00FB1C91276100D1E8D9 /* bit_stream.c */,
 				20FB00F91C91264100D1E8D9 /* audio_data_buf.h */,

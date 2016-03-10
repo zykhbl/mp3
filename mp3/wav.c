@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "common.h"
 
 #include "wav.h"
 
@@ -63,6 +64,30 @@ void writeWAVHeader(FILE *f) {
     //data chunk
     writeString(f, "data");//data id
     writeInt(f, len - 44);//data chunk size *PLACEHOLDER*
+}
+
+void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, int stereo, int done, FILE *outFile, unsigned long *psampFrames) {
+    int i, j, l;
+    static short int outsamp[1600];
+    static long k = 0;
+    
+    if (!done) {
+        for (i = 0; i < num; i++) {
+            for (j = 0; j < SBLIMIT; j++) {
+                (*psampFrames)++;
+                for (l = 0; l < stereo; l++) {
+                    if (!(k % 1600) && k) {//k > 0 且 k 整除 1600 时写入文件
+                        fwrite(outsamp, 2, 1600, outFile);
+                        k = 0;
+                    }
+                    outsamp[k++] = pcm_sample[l][i][j];
+                }
+            }
+        }
+    } else {
+        fwrite(outsamp, 2, (int)k, outFile);
+        k = 0;
+    }
 }
 
 #undef T

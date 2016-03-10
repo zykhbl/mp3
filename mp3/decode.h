@@ -17,8 +17,6 @@ extern void III_reorder(double xr[SBLIMIT][SSLIMIT], double ro[SBLIMIT][SSLIMIT]
 extern void III_stereo(double xr[2][SBLIMIT][SSLIMIT], double lr[2][SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, frame fr_ps);
 extern void III_antialias(double xr[SBLIMIT][SSLIMIT], double hybridIn[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame fr_ps);
 extern void III_hybrid(double fsIn[SSLIMIT], double tsOut[SSLIMIT], int sb, int ch, struct gr_info_s *gr_info, frame fr_ps);
-
 extern int subBandSynthesis (double *bandPtr, int channel, short *samples);
-extern void out_fifo(short pcm_sample[2][SSLIMIT][SBLIMIT], int num, frame fr_ps, int done, FILE *outFile, unsigned long *psampFrames);
 
 #endif
