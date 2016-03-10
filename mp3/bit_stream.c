@@ -81,12 +81,12 @@ void free_bit_stream(T *bs) {
 //returns 1 if end of bit stream was reached
 //returns 0 if end of bit stream was not reached
 int end_bs(T bs) {
-    return(bs->eobs);
+    return bs->eobs;
 }
 
 //return the current bit stream length (in bits)
 unsigned long sstell(T bs) {
-    return(bs->totbit);
+    return bs->totbit;
 }
 
 void refill_buffer(T bs) {
@@ -95,8 +95,26 @@ void refill_buffer(T bs) {
     
     while ((i >= 0) && (!bs->eob)) {
         n = fread(&bs->buf[i--], sizeof(unsigned char), 1, bs->pt);
-        if (!n) {
+        if (!n) {//bs->eob一直为0，除非是读到文件的最后EOF时，i > 0，此时bs->eob > 0，但当 i == 0 时，bs->eob ＝ 0
             bs->eob = i + 1;
+        }
+    }
+}
+
+void will_refill_buffer(T bs) {
+    if (!bs->buf_bit_idx) {
+        bs->buf_bit_idx = 8;
+        bs->buf_byte_idx--;
+        if ((bs->buf_byte_idx < MINIMUM) || (bs->buf_byte_idx < bs->eob)) {
+            if (bs->eob) {
+                bs->eobs = TRUE;
+            } else {
+                for (register int i = bs->buf_byte_idx; i >= 0; i--) {
+                    bs->buf[bs->buf_size - 1 - bs->buf_byte_idx + i] = bs->buf[i];
+                }
+                refill_buffer(bs);
+                bs->buf_byte_idx = bs->buf_size - 1;
+            }
         }
     }
 }
@@ -106,25 +124,11 @@ int mask[8] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
 //read 1 bit from the bit stream
 unsigned int get1bit(T bs) {
     unsigned int bit;
-    register int i;
     
     bs->totbit++;
     
-    if (!bs->buf_bit_idx) {
-        bs->buf_bit_idx = 8;
-        bs->buf_byte_idx--;
-        if ((bs->buf_byte_idx < MINIMUM) || (bs->buf_byte_idx < bs->eob)) {
-            if (bs->eob) {
-                bs->eobs = TRUE;
-            } else {
-                for (i = bs->buf_byte_idx; i >= 0; i--) {
-                    bs->buf[bs->buf_size - 1 - bs->buf_byte_idx + i] = bs->buf[i];
-                }
-                refill_buffer(bs);
-                bs->buf_byte_idx = bs->buf_size - 1;
-            }
-        }
-    }
+    will_refill_buffer(bs);
+    
     bit = bs->buf[bs->buf_byte_idx] & mask[bs->buf_bit_idx - 1];
     bit = bit >> (bs->buf_bit_idx - 1);
     bs->buf_bit_idx--;
@@ -136,7 +140,6 @@ int putmask[9] = {0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
 //read N bit from the bit stream
 unsigned long getbits(T bs, int N) {
     unsigned long val = 0;
-    register int i;
     register int j = N;
     register int k, tmp;
     
@@ -146,21 +149,8 @@ unsigned long getbits(T bs, int N) {
     
     bs->totbit += N;
     while (j > 0) {
-        if (!bs->buf_bit_idx) {
-            bs->buf_bit_idx = 8;
-            bs->buf_byte_idx--;
-            if ((bs->buf_byte_idx < MINIMUM) || (bs->buf_byte_idx < bs->eob)) {
-                if (bs->eob) {
-                    bs->eobs = TRUE;
-                } else {
-                    for (i = bs->buf_byte_idx; i >= 0; i--) {
-                        bs->buf[bs->buf_size - 1 - bs->buf_byte_idx + i] = bs->buf[i];
-                    }
-                    refill_buffer(bs);
-                    bs->buf_byte_idx = bs->buf_size - 1;
-                }
-            }
-        }
+        will_refill_buffer(bs);
+        
         k = MIN(j, bs->buf_bit_idx);
         tmp = bs->buf[bs->buf_byte_idx] & putmask[bs->buf_bit_idx];
         tmp = tmp >> (bs->buf_bit_idx - k);
