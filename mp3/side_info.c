@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "common.h"
 
 #include "side_info.h"
 
@@ -20,7 +21,12 @@ T create_III_side_info() {
     return t;
 }
 
-void III_get_side_info(Bit_stream_struc bs, T si, frame fr_ps) {
+void free_III_side_info(T *si) {
+    free(*si);
+    *si = NULL;
+}
+
+void III_get_side_info(bit_stream bs, T si, frame fr_ps) {
     int ch, gr, i;
     int stereo = fr_ps->stereo;
     

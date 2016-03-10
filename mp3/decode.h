@@ -11,7 +11,7 @@
 
 #include "scale_factors.h"
 
-extern void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, int gr, int part2_start, frame fr_ps);
+extern void III_hufman_decode(audio_data_buf buf, long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, int gr, int part2_start, frame fr_ps);
 extern void III_dequantize_sample(long int is[SBLIMIT][SSLIMIT], double xr[SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, int ch, frame fr_ps);
 extern void III_reorder(double xr[SBLIMIT][SSLIMIT], double ro[SBLIMIT][SSLIMIT], struct gr_info_s *gr_info, frame fr_ps);
 extern void III_stereo(double xr[2][SBLIMIT][SSLIMIT], double lr[2][SBLIMIT][SSLIMIT], III_scalefac_t *scalefac, struct gr_info_s *gr_info, frame fr_ps);

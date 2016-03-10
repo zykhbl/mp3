@@ -9,21 +9,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "common.h"
 
 #include "frame.h"
 
 #define T frame
 
-#define	ALIGNING			8
-
-T create_frame_struc() {
+T create_frame() {
     T t;
-    t = (T)mem_alloc((long) sizeof(*t), "frame_struc");
+    t = (T)mem_alloc((long) sizeof(*t), "frame");
     
     return t;
 }
 
-int seek_sync(Bit_stream_struc bs, unsigned long sync, int N) {
+void free_frame(T *fr_ps) {
+    free(*fr_ps);
+    *fr_ps = NULL;
+}
+
+int seek_sync(bit_stream bs, unsigned long sync, int N) {
     unsigned long aligning;
     unsigned long val;
     long maxi = (int)pow(2.0, (double)N) - 1;
@@ -46,7 +50,7 @@ int seek_sync(Bit_stream_struc bs, unsigned long sync, int N) {
     }
 }
 
-void decode_info(Bit_stream_struc bs, T fr_ps) {
+void decode_info(bit_stream bs, T fr_ps) {
     layer *hdr = &fr_ps->header;
     
     hdr->version = get1bit(bs);// 0-保留的; 1-MPEG
@@ -115,7 +119,7 @@ void writeHdr(T fr_ps) {
     printf("sblim=%d, jsbd=%d, ch=%d\n", fr_ps->sblimit, fr_ps->jsbound, fr_ps->stereo);
 }
 
-void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc) {
+void buffer_CRC(bit_stream bs, unsigned int *old_crc) {
     *old_crc = (unsigned int)getbits(bs, 16);
 }
 

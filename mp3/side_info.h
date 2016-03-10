@@ -40,8 +40,9 @@ struct III_side_info {
 };
 
 extern T create_III_side_info();
+extern void free_III_side_info(T *si);
 
-extern void III_get_side_info(Bit_stream_struc bs, T si, frame fr_ps);
+extern void III_get_side_info(bit_stream bs, T si, frame fr_ps);
 
 #undef T
 

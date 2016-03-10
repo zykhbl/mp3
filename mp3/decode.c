@@ -10,30 +10,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "common.h"
 #include "huffman.h"
 
 #include "decode.h"
-
-#define	HAN_SIZE			512
-#define	SCALE				32768
-
-#define	PI					3.14159265358979
-#define	PI64				PI/64
-#define	PI4					PI/4
-
-FILE *openTableFile(char *name) {
-    char fulname[80];
-    FILE *f;
-    
-    fulname[0] = '\0';
-    
-    strcat(fulname, name);
-    if( (f = fopen(fulname, "r")) == NULL ) {
-        fprintf(stderr,"\nopenTable: could not find %s\n", fulname);
-    }
-    
-    return f;
-}
 
 int huffman_initialized = FALSE;
 char *huffdec = "/Users/weidong_wu/mp3/resource/huffdec.txt";
@@ -80,7 +60,7 @@ struct {
     }
 };
 
-void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, int gr, int part2_start, frame fr_ps) {
+void III_hufman_decode(audio_data_buf buf, long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, int gr, int part2_start, frame fr_ps) {
     int i, x, y;
     int v, w;
     huffcodetab h;
@@ -112,7 +92,7 @@ void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, 
             h = &ht[(*si).ch[ch].gr[gr].table_select[2]];
         }
         
-        huffman_decoder(h, &x, &y, &v, &w);
+        huffman_decoder(h, &x, &y, &v, &w, buf);
         
         is[i / SSLIMIT][i % SSLIMIT] = x;
         is[(i + 1) / SSLIMIT][(i + 1) % SSLIMIT] = y;
@@ -120,8 +100,8 @@ void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, 
     
     //count1区一个huffman码字表示4个量化系数，一共使用了2本码书
     h = &ht[(*si).ch[ch].gr[gr].count1table_select + 32];
-    while ((hsstell() < part2_start + (*si).ch[ch].gr[gr].part2_3_length) && (i < SSLIMIT * SBLIMIT)) {//Read count1 area
-        huffman_decoder(h, &x, &y, &v, &w);
+    while ((hsstell(buf) < part2_start + (*si).ch[ch].gr[gr].part2_3_length) && (i < SSLIMIT * SBLIMIT)) {//Read count1 area
+        huffman_decoder(h, &x, &y, &v, &w, buf);
         
         is[i / SSLIMIT][i % SSLIMIT] = v;
         is[(i + 1) / SSLIMIT][(i + 1) % SSLIMIT] = w;
@@ -130,13 +110,13 @@ void III_hufman_decode(long int is[SBLIMIT][SSLIMIT], III_side_info si, int ch, 
         i += 4;
     }
     
-    if (hsstell() > part2_start + (*si).ch[ch].gr[gr].part2_3_length) {//使用了不属于count1区，而是zero区的位，所以要回退到count1区最后一个可用位的结束位置
+    if (hsstell(buf) > part2_start + (*si).ch[ch].gr[gr].part2_3_length) {//使用了不属于count1区，而是zero区的位，所以要回退到count1区最后一个可用位的结束位置
         i -= 4;
-        rewindNbits((int)(hsstell() - part2_start - (*si).ch[ch].gr[gr].part2_3_length));
+        rewindNbits(buf, (int)(hsstell(buf) - part2_start - (*si).ch[ch].gr[gr].part2_3_length));
     }
     
-    if (hsstell() < part2_start + (*si).ch[ch].gr[gr].part2_3_length) {//Dismiss stuffing Bits（丢弃count1区剩余的位）
-        hgetbits((int)(part2_start + (*si).ch[ch].gr[gr].part2_3_length - hsstell()));
+    if (hsstell(buf) < part2_start + (*si).ch[ch].gr[gr].part2_3_length) {//Dismiss stuffing Bits（丢弃count1区剩余的位）
+        hgetbits(buf, (int)(part2_start + (*si).ch[ch].gr[gr].part2_3_length - hsstell(buf)));
     }
     
     for (; i < SSLIMIT * SBLIMIT; i++) {//zero out rest（zero区不用解码。表示余下子带谱线值全为0）

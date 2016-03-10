@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		205C4C211C8D28AD00DFEDF9 /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C191C8D28AD00DFEDF9 /* common.c */; };
 		205C4C221C8D28AD00DFEDF9 /* decode.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1B1C8D28AD00DFEDF9 /* decode.c */; };
 		205C4C231C8D28AD00DFEDF9 /* huffman.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1D1C8D28AD00DFEDF9 /* huffman.c */; };
 		205C4C241C8D28AD00DFEDF9 /* mp3_decoder.c in Sources */ = {isa = PBXBuildFile; fileRef = 205C4C1F1C8D28AD00DFEDF9 /* mp3_decoder.c */; };
@@ -15,6 +14,9 @@
 		20F1FA8C1C8FF93600B08361 /* frame.c in Sources */ = {isa = PBXBuildFile; fileRef = 20F1FA8A1C8FF93600B08361 /* frame.c */; };
 		20F1FA8F1C9003B000B08361 /* side_info.c in Sources */ = {isa = PBXBuildFile; fileRef = 20F1FA8D1C9003B000B08361 /* side_info.c */; };
 		20F1FA921C90292B00B08361 /* scale_factors.c in Sources */ = {isa = PBXBuildFile; fileRef = 20F1FA901C90292B00B08361 /* scale_factors.c */; };
+		20FB00FA1C91264100D1E8D9 /* audio_data_buf.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FB00F81C91264100D1E8D9 /* audio_data_buf.c */; };
+		20FB00FD1C91276100D1E8D9 /* bit_stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FB00FB1C91276100D1E8D9 /* bit_stream.c */; };
+		20FB00FF1C91291600D1E8D9 /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FB00FE1C91291600D1E8D9 /* common.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,7 +33,6 @@
 
 /* Begin PBXFileReference section */
 		205C4C0F1C8D27AA00DFEDF9 /* mp3 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = mp3; sourceTree = BUILT_PRODUCTS_DIR; };
-		205C4C191C8D28AD00DFEDF9 /* common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = common.c; sourceTree = "<group>"; };
 		205C4C1A1C8D28AD00DFEDF9 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 		205C4C1B1C8D28AD00DFEDF9 /* decode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = decode.c; sourceTree = "<group>"; };
 		205C4C1C1C8D28AD00DFEDF9 /* decode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decode.h; sourceTree = "<group>"; };
@@ -50,6 +51,11 @@
 		20F1FA8E1C9003B000B08361 /* side_info.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = side_info.h; sourceTree = "<group>"; };
 		20F1FA901C90292B00B08361 /* scale_factors.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = scale_factors.c; sourceTree = "<group>"; };
 		20F1FA911C90292B00B08361 /* scale_factors.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = scale_factors.h; sourceTree = "<group>"; };
+		20FB00F81C91264100D1E8D9 /* audio_data_buf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = audio_data_buf.c; sourceTree = "<group>"; };
+		20FB00F91C91264100D1E8D9 /* audio_data_buf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = audio_data_buf.h; sourceTree = "<group>"; };
+		20FB00FB1C91276100D1E8D9 /* bit_stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = bit_stream.c; sourceTree = "<group>"; };
+		20FB00FC1C91276100D1E8D9 /* bit_stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bit_stream.h; sourceTree = "<group>"; };
+		20FB00FE1C91291600D1E8D9 /* common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = common.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,7 +92,11 @@
 				205C4C201C8D28AD00DFEDF9 /* wav.h */,
 				207C837A1C8E74690014323B /* wav.c */,
 				205C4C1A1C8D28AD00DFEDF9 /* common.h */,
-				205C4C191C8D28AD00DFEDF9 /* common.c */,
+				20FB00FE1C91291600D1E8D9 /* common.c */,
+				20FB00FC1C91276100D1E8D9 /* bit_stream.h */,
+				20FB00FB1C91276100D1E8D9 /* bit_stream.c */,
+				20FB00F91C91264100D1E8D9 /* audio_data_buf.h */,
+				20FB00F81C91264100D1E8D9 /* audio_data_buf.c */,
 				205C4C1E1C8D28AD00DFEDF9 /* huffman.h */,
 				205C4C1D1C8D28AD00DFEDF9 /* huffman.c */,
 				20F1FA8B1C8FF93600B08361 /* frame.h */,
@@ -169,12 +179,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				205C4C211C8D28AD00DFEDF9 /* common.c in Sources */,
+				20FB00FA1C91264100D1E8D9 /* audio_data_buf.c in Sources */,
 				20F1FA921C90292B00B08361 /* scale_factors.c in Sources */,
 				205C4C231C8D28AD00DFEDF9 /* huffman.c in Sources */,
 				20F1FA8F1C9003B000B08361 /* side_info.c in Sources */,
 				205C4C221C8D28AD00DFEDF9 /* decode.c in Sources */,
 				20F1FA8C1C8FF93600B08361 /* frame.c in Sources */,
+				20FB00FF1C91291600D1E8D9 /* common.c in Sources */,
+				20FB00FD1C91276100D1E8D9 /* bit_stream.c in Sources */,
 				205C4C241C8D28AD00DFEDF9 /* mp3_decoder.c in Sources */,
 				207C837B1C8E74690014323B /* wav.c in Sources */,
 			);

@@ -20,6 +20,8 @@
 #ifndef mp3Decoder_huffman_h
 #define mp3Decoder_huffman_h
 
+#include "audio_data_buf.h"
+
 #define HUFFBITS unsigned long int
 #define HTN	34
 
@@ -42,7 +44,7 @@ struct T {
 extern struct T ht[HTN];
 
 extern int read_decoder_table(FILE *fi);
-extern int huffman_decoder(T h, int *x, int *y, int *v, int *w);
+extern int huffman_decoder(T h, int *x, int *y, int *v, int *w, audio_data_buf buf);
 
 #undef T
 

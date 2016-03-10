@@ -9,22 +9,10 @@
 #ifndef frame_h
 #define frame_h
 
-#include "common.h"
+#include "bit_stream.h"
 
 #define T frame
 typedef struct T *T;
-
-//MPEG Header Definitions - Mode Values
-#define	MPG_MD_STEREO           0
-#define	MPG_MD_JOINT_STEREO     1
-#define	MPG_MD_DUAL_CHANNEL     2
-#define	MPG_MD_MONO             3
-
-#define	SYNC_WORD			(long)0xfff
-#define	SYNC_WORD_LENGTH	12
-
-#define	SBLIMIT				32
-#define	SSLIMIT				18
 
 typedef struct {//帧头格式:4字节(32位：11111111111...(12个1开头))
     int version;
@@ -50,14 +38,15 @@ struct frame {
     int         sblimit;        //total number of sub bands
 };
 
-extern T create_frame_struc();
+extern T create_frame();
+extern void free_frame(T *fr_ps);
 
-extern int seek_sync(Bit_stream_struc bs, unsigned long sync, int N);
-extern void decode_info(Bit_stream_struc bs, T fr_ps);
+extern int seek_sync(bit_stream bs, unsigned long sync, int N);
+extern void decode_info(bit_stream bs, T fr_ps);
 extern void hdr_to_frps(T fr_ps);
 extern void writeHdr(T fr_ps);
 
-extern void buffer_CRC(Bit_stream_struc bs, unsigned int *old_crc);
+extern void buffer_CRC(bit_stream bs, unsigned int *old_crc);
 extern int main_data_slots(T fr_ps);
 
 #undef T

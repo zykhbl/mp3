@@ -21,7 +21,7 @@ int slen[2][16] = {
     {0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3}
 };
 
-void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info si, int gr, int ch, frame fr_ps) {
+void III_get_scale_factors(audio_data_buf buf, III_scalefac_t *scalefac, III_side_info si, int gr, int ch, frame fr_ps) {
     int sfb, i, window;
     struct gr_info_s *gr_info = &(si->ch[ch].gr[gr]);
     
@@ -33,18 +33,18 @@ void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info si, int gr, i
             //其中：part2_length = (8 + 3 × 3) × slen1 + (6 × 3) × slen2
             
             for (sfb = 0; sfb < 8; sfb++) {//前面8个频带为 long block
-                (*scalefac)[ch].l[sfb] = (int)hgetbits(slen[0][gr_info->scalefac_compress]);
+                (*scalefac)[ch].l[sfb] = (int)hgetbits(buf, slen[0][gr_info->scalefac_compress]);
             }
             
             //后面9个频带为short block，每一个频带包含3个窗口（window）
             for (sfb = 3; sfb < 6; sfb++) {
                 for (window = 0; window < 3; window++) {
-                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[0][gr_info->scalefac_compress]);
+                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(buf, slen[0][gr_info->scalefac_compress]);
                 }
             }
             for (sfb = 6; sfb < 12; sfb++) {
                 for (window = 0; window < 3; window++) {
-                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[1][gr_info->scalefac_compress]);
+                    (*scalefac)[ch].s[window][sfb] = (int)hgetbits(buf, slen[1][gr_info->scalefac_compress]);
                 }
             }
             
@@ -60,7 +60,7 @@ void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info si, int gr, i
             for (i = 0; i < 2; i++) {
                 for (sfb = sfbtable.s[i]; sfb < sfbtable.s[i + 1]; sfb++) {
                     for (window = 0; window < 3; window++) {
-                        (*scalefac)[ch].s[window][sfb] = (int)hgetbits(slen[i][gr_info->scalefac_compress]);
+                        (*scalefac)[ch].s[window][sfb] = (int)hgetbits(buf, slen[i][gr_info->scalefac_compress]);
                     }
                 }
             }
@@ -82,7 +82,7 @@ void III_get_scale_factors(III_scalefac_t *scalefac, III_side_info si, int gr, i
             
             if ((si->ch[ch].scfsi[i] == 0) || (gr == 0)) {
                 for (sfb = sfbtable.l[i]; sfb < sfbtable.l[i + 1]; sfb++) {
-                    (*scalefac)[ch].l[sfb] = (int)hgetbits(slen[(i < 2) ? 0: 1][gr_info->scalefac_compress]);
+                    (*scalefac)[ch].l[sfb] = (int)hgetbits(buf, slen[(i < 2) ? 0: 1][gr_info->scalefac_compress]);
                 }
             }
         }

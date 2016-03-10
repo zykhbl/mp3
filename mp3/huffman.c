@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "common.h"
 
 #include "huffman.h"
 
@@ -108,7 +107,7 @@ int read_decoder_table(FILE *fi) {
 
 //do the huffman-decoding
 //note! for counta,countb -the 4 bit value is returned in y, discard x
-int huffman_decoder(T h, int *x, int *y, int *v, int *w) {
+int huffman_decoder(T h, int *x, int *y, int *v, int *w, audio_data_buf buf) {
     HUFFBITS level;
     int point = 0;
     int error = 1;
@@ -131,7 +130,7 @@ int huffman_decoder(T h, int *x, int *y, int *v, int *w) {
             error = 0;
             break;
         }
-        if (hget1bit()) {//左子树
+        if (hget1bit(buf)) {//左子树
             while (h->val[point][1] >= MXOFF) {//16进制时，MXOFF = 'fa' ??
                 point += h->val[point][1];
             }
@@ -166,22 +165,22 @@ int huffman_decoder(T h, int *x, int *y, int *v, int *w) {
         
         //在huffman码字后是每个非零残差谱线的符号位
         if (*v) {
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *v = -*v;
             }
         }
         if (*w) {
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *w = -*w;
             }
         }
         if (*x) {
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *x = -*x;
             }
         }
         if (*y) {
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *y = -*y;
             }
         }
@@ -192,21 +191,21 @@ int huffman_decoder(T h, int *x, int *y, int *v, int *w) {
 
         if (h->linbits) {// ??
             if ((h->xlen - 1) == *x) {
-                *x += hgetbits(h->linbits);
+                *x += hgetbits(buf, h->linbits);
             }
         }
         if (*x) {//在huffman码字后是每个非零残差谱线的符号位
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *x = -*x;
             }
         }
         if (h->linbits) {// ??
             if ((h->ylen-1) == *y) {
-                *y += hgetbits(h->linbits);
+                *y += hgetbits(buf, h->linbits);
             }
         }
         if (*y) {//在huffman码字后是每个非零残差谱线的符号位
-            if (hget1bit() == 1) {
+            if (hget1bit(buf) == 1) {
                 *y = -*y;
             }
         }
